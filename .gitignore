@@ -1,2 +1,4 @@
 env
 storage
+app.spec
+__pycache__/
