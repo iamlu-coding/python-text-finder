@@ -4,6 +4,7 @@ from pathlib import PurePath
 from openpyxl import load_workbook
 import openpyxl
 from binaryornot.check import is_binary
+from PyPDF2 import PdfReader
 
 class TextFinder:
     def __init__(self, root_dir, text_value):
@@ -18,14 +19,33 @@ class TextFinder:
             if os.path.isfile(str(dir_file_path)):
                 # Check if file is Excel 
                 if re.findall('\\b.xls\\b', str(file)) or re.findall('\\b.xlsx\\b', str(file)):
-                    self._search_excel_files(dir_file_path, file)
+                    self._search_excel_file(dir_file_path, file)
                 # Check if file is binary or not
                 elif is_binary(str(dir_file_path)) == False:
-                    self._search_text_files(dir_file_path, file)
+                    self._search_text_file(dir_file_path, file)
 
-                # ToDo search for binary file like PDF, DOCX, etc.
+                # Check if file is PDF
+                elif re.findall('\\b.pdf\\b', str(file)):
+                    self._search_pdf_file(dir_file_path, file)
 
-    def _search_excel_files(self, dir_file_path, filename):
+                # ToDo search for binary file like DOCX.
+
+    def _search_pdf_file(self, dir_file_path, filename):
+        page_number = 0
+        pdf_obj = PdfReader(str(dir_file_path))
+        for page in pdf_obj.pages:
+            page_number += 1
+            page_text = page.extract_text().split('\n')
+            for idx, line in enumerate(page_text):
+                if re.search(self._text_value, line, flags=re.IGNORECASE):
+                    result_str = 'File Name: ' + filename + ' | ' \
+                        + 'Page #: ' + str(page_number) + ' | ' \
+                        + 'Found at Row #: ' + str(idx + 1) + ' | ' \
+                        + 'Row Value: ' + line
+                    self._results.append(result_str)
+                    self._is_found = 'Yes'
+
+    def _search_excel_file(self, dir_file_path, filename):
         wb = load_workbook(dir_file_path)
         for ws in wb.worksheets:
             for idx, row in enumerate(ws.rows):
@@ -40,7 +60,7 @@ class TextFinder:
                         self._results.append(result_str)
                         self._is_found = 'Yes'
 
-    def _search_text_files(self, dir_file_path, filename):
+    def _search_text_file(self, dir_file_path, filename):
         with open(dir_file_path, 'r') as text_file:
             lines = text_file.readlines()
 
